@@ -46,14 +46,19 @@ class RandomForestModel:
     def get_current_features(self, stock_list, X):
         current_data = []
         for stock in stock_list:
-            stock_data = yf.download(stock, period="3mo")
+            stock_df = yf.download(stock, period="3mo")
+            if stock_df.empty:
+                continue
 
-            stock_data = StockData.preprocess_data({stock: stock_data})[stock]
-            stock_data = StockData.add_technical_indicators({stock: stock_data})[stock]
-            stock_data = stock_data.tail(1)
+            temp_data = StockData([], "3mo", "1d")
+            temp_data.data = {stock: stock_df}
+            temp_data.preprocess_data()
+            temp_data.add_technical_indicators()
 
-            if not stock_data.empty:
-                current_data.append(stock_data)
+            latest_row = temp_data.data[stock].tail(1).reindex(columns=X.columns)
+
+            if not latest_row.empty:
+                current_data.append(latest_row)
         if not current_data:
             raise ValueError("No valid data available.")
         current_df = pd.concat(current_data)
